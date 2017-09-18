@@ -5,6 +5,7 @@ import {
     StyleSheet,
     View,
     Alert,
+    AsyncStorage,
 } from 'react-native';
 import {
     Container,
@@ -23,48 +24,15 @@ import {
 import Detail from './detail';
 import Banner from './components/swiper';
 
+const SERVER_URL = 'http://172.12.11.93:3000/';
+const PRODUCT_API = 'products/';
+
 export default class home extends Component {
     constructor(props) {
         super(props);
         this.state = {
             currentPage: 0,
-            products: [
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                },
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                },
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                },
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                },
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                },
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                },
-                {
-                    image: require('../res/images/phone.jpg'),
-                    title: '商品1',
-                    subTitle: '描述1',
-                }
-            ],
+            products: [],
             advertisements: [
                 {
                     // url: 'https://img12.360buyimg.com/babel/jfs/t7498/194/2982159482/95724/7ddf2ca5/59b773aaNe4fe32e6.jpg'
@@ -121,6 +89,50 @@ export default class home extends Component {
         );
     }
 
+    componentDidMount() {
+        this._fetchProducts();
+    }
+
+    _fetchProducts = () => {
+        const req = new Request(SERVER_URL + PRODUCT_API, {method: 'GET'});
+        console.log('request-getProduct:' + SERVER_URL + PRODUCT_API);
+        fetch(req)
+            .then((res) => {
+                if (res.status === 200)
+                    return res.json();
+                else
+                    console.log('request failed');
+            })
+            .then((result, done) => {
+                if (!done) {
+                    AsyncStorage
+                        .setItem('products', JSON.stringify(result))
+                        .then((error) => {
+                            if (error) {
+                                Alert.alert('storage error: ' + error, null, null);
+                            }
+                        });
+                    this.setState({
+                        products: result,
+                    });
+                }
+            })
+            .catch((error) => {
+                console.log('get products error:' + error);
+                AsyncStorage
+                    .getItem('products')
+                    .then((values) => {
+                        this.setState({
+                            products: JSON.parse(values),
+                        });
+                    });
+            });
+    };
+
+    _productUpdated = () => {
+        this._fetchProducts();
+    };
+
     _renderRow = (product) => {
         return (
             <ListItem
@@ -132,21 +144,22 @@ export default class home extends Component {
                             name: 'detail',
                             component: Detail,
                             params: {
-                                productTitle: product.title
+                                product: product,
+                                productUpdated: this._productUpdated
                             }
-
                         });
                     }
                 }}>
                 <Thumbnail
                     square
                     size={40}
-                    source={product.images}
+                    source={{uri: SERVER_URL + product.image}}
                 />
                 <Text>{product.title}</Text>
-                <Text note>{product.subTitle}</Text>
-            </ListItem>        );
-    }
+                <Text note>{product.subtitle}</Text>
+            </ListItem>
+        );
+    };
 }
 
 const styles = StyleSheet.create({
